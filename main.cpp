@@ -1,13 +1,21 @@
-#include "thread_queue.h"
+#include "UnboundedBlockingMPMCQueue.h"
+#include "ThreadPool.h"
 #include <iostream>
+#include <thread>
 
-void main()
+#include <functional>
+
+static int state = 0;
+
+int main()
 {
-	thread_queue<int> q;
-	int item = 5;
-	q.enqueue(item);
-	q.enqueue(item);
-	q.enqueue(item);
-	q.enqueue(item);
-	std:: cout << q.dequeue(); 
+	ThreadPool tp(6);
+	for(int i = 0; i < 1000000; ++i){
+		tp.Submit([&]{
+			state++;
+		});
+	}
+	std::cout << state;	
+	tp.Join();
+	return 0;
 }
