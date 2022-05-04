@@ -1,15 +1,38 @@
 #include "UnboundedBlockingMPMCQueue.h"
 #include <functional>
 #include <iostream>
+#include <type_traits>
+#include <future>
 
 class ThreadPool{
 public:
 	ThreadPool(const size_t& amount){
 		initialize_workers(amount);
 	}
+    ~ThreadPool(){
+        this-> Join(); 
+    }
 
-	void Submit(std::function<void()> func){
-		queue.Push(func);// move?
+   
+    template<typename Func>
+    void Submit(Func&& f){
+        queue.Push([f](){
+            f(); 
+        });
+    }
+
+    template<typename Func, typename... Args>
+	auto Submit(Func&& f, Args&&... args){
+        using return_type = typename std::result_of<Func(Args...)>::type;
+        auto task_ptr = std::make_shared<std::packaged_task<return_type()>>([f, args...] () {
+                    return f(args...);
+                });// not sure about that, its pointer so we not lose it
+        auto future_of_task = task_ptr -> get_future();
+        auto func_to_add = [task_ptr]() {
+            (*task_ptr)();
+        };
+		queue.Push(func_to_add);
+        return future_of_task;
 	}
 
 	void Join(){
@@ -33,11 +56,18 @@ private:
 			if(!task){ 
 				break; 
 			}
-			task();// add exceptions handlers
+			task();// add exceptions handlers?
 		}
 	}
 
+    size_t get_threads_count() const {
+        return workers.size(); 
+    }
 
+    size_t get_task_count() const {
+        return queue.size(); 
+    }
+    
 private:
 	UnboundedBlockingMPMCQueue<std::function<void()>> queue;
 	std::vector<std::thread> workers;
