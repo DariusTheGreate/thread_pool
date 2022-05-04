@@ -9,13 +9,13 @@ static int state = 0;
 
 int main()
 {
-	ThreadPool tp(6);
-	for(int i = 0; i < 1000000; ++i){
-		tp.Submit([&]{
-			state++;
-		});
-	}
-	std::cout << state;	
-	tp.Join();
+    ThreadPool tp(6); 
+    tp.Submit([](){std::cout << "ima hui\n"; });
+    
+    int as = 125;
+    int bs = 6;
+    auto res_future = tp.Submit([](int a, int b){ return a - b; }, as, bs);
+    std::cout << res_future.get();
+
 	return 0;
 }
